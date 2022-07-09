@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+</head>
+
+<body>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        var socket = io('http://192.168.1.15:5001');
+        socket.on('greeting-from-server', function (message) {
+            document.body.appendChild(
+                document.createTextNode(message.greeting)
+            );
+            socket.emit('execution/task', {
+                greeting: 'Hello Server'
+            });
+        });
+        const y = 5;
+        function myFunction(a, b) {
+
+
+
+            var options = ["1", "2", "3", "4", "5"];
+            CreateElements("sequences", options)
+        }
+
+
+        function CreateElements(targetElement, options) {
+            removeOptions(targetElement);
+            var select = document.getElementById(targetElement);
+
+            var el = document.createElement("option");
+            el.textContent = targetElement;
+            el.value = targetElement;
+            select.appendChild(el);
+            for (var i = 0; i < options.length; i++) {
+                var opt = options[i];
+                var el = document.createElement("option");
+                el.textContent = opt;
+                el.value = opt;
+                select.appendChild(el);
+            }
+        }
+
+        function removeOptions(targetElement) {
+            var select = document.getElementById(targetElement);
+            var i, L = select.options.length - 1;
+            for (i = L; i >= 0; i--) {
+                select.remove(i);
+            }
+        }
+
+        function execute(taskType) {
+            var id = document.getElementById(taskType);
+            var duration = document.getElementById(taskType+"Duration");
+
+            socket.emit('execute', {
+                id: id.value,
+                duration: Number(duration.value)
+            }, (response) => { console.log(response.config); });
+        }
+
+        function textAreaAdjust(element) {
+            element.style.height = "1px";
+            element.style.height = (25 + element.scrollHeight) + "px";
+        }
+
+        function synchronize() {
+            config = document.getElementById('config');
+
+            socket.emit('synchronize', {
+                data: config.value
+            });
+        }
+
+        function getConfiguration() {
+            config = document.getElementById('config');
+
+            socket.emit('getConfiguration', 'test', (response) => {
+                config.value = response.config;
+                populateProcesses();
+            });
+        }
+
+        function populateProcesses() {
+            config = document.getElementById('config');
+            const structure = JSON.parse(config.value);
+            var optionsCycles = [];
+            var optionsSequences = [];
+            structure.cycles.forEach(cycle => {
+
+                optionsCycles.push(cycle.id);
+            });
+            structure.sequences.forEach(sequence => {
+
+                optionsSequences.push(sequence.id);
+            });
+
+            CreateElements("cycles", optionsCycles);
+            CreateElements("sequences", optionsSequences);
+        }
+
+
+
+    </script>
+    <div
+        style="width: 500px;align-items: center;width: 640px; /* Can be in percentage also. */height: auto;margin: 0 auto;padding: 10px;position: relative;">
+        <textarea id='config' onkeyup="textAreaAdjust(this)" style="width: 100%;overflow:hidden;"
+            name="description">Enter your json configuration box here</textarea>
+        <div style="display: flex;align-items: center;justify-content: center;">
+            <button style="align-items:'center'" onclick="synchronize()">execute</button>
+            <button style="align-items:'center'" onclick="getConfiguration()">load</button>
+        </div>
+    </div>
+
+    <div>
+        <select id="sequences">
+            <option>Sequences</option>
+        </select>
+        <input id='sequencesDuration' type="text" placeholder="duration ms">
+        <button onclick="execute('sequences')">execute</button>
+    </div>
+
+    <div>
+        <select id="cycles">
+            <option>cycles</option>
+        </select>
+        <input id='cyclesDuration' type="text" placeholder="duration ms">
+        <button onclick="execute('cycles')">execute</button>
+    </div>
+
+
+
+</body>
+
+</html>
