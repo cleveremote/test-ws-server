@@ -7,7 +7,7 @@
 <body>
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        var socket = io('http://192.168.1.15:5001');
+        var socket = io('http://127.0.0.1:5001');
         socket.on('greeting-from-server', function (message) {
             document.body.appendChild(
                 document.createTextNode(message.greeting)
@@ -51,14 +51,21 @@
             }
         }
 
-        function execute(taskType) {
+        function execute(taskType, action) {
             var id = document.getElementById(taskType);
-            var duration = document.getElementById(taskType+"Duration");
-
-            socket.emit('execute', {
+            var duration = document.getElementById(taskType + "Duration");
+            const dto = {
                 id: id.value,
+                status: 'STOPPED',
+                action: action,
+                function: 'FUNCTION',
+                mode: 'FORCE',
+                type: 'NOW',
                 duration: Number(duration.value)
-            }, (response) => { console.log(response.config); });
+            }
+            socket.emit('agg/execution/process', dto, (response) => {
+                console.log(response.config);
+            });
         }
 
         function textAreaAdjust(element) {
@@ -69,7 +76,7 @@
         function synchronize() {
             config = document.getElementById('config');
 
-            socket.emit('synchronize', {
+            socket.emit('agg/synchronize/configuration', {
                 data: config.value
             });
         }
@@ -77,7 +84,7 @@
         function getConfiguration() {
             config = document.getElementById('config');
 
-            socket.emit('getConfiguration', 'test', (response) => {
+            socket.emit('agg/fetch/configuration', 'test', (response) => {
                 config.value = response.config;
                 populateProcesses();
             });
@@ -89,18 +96,72 @@
             var optionsCycles = [];
             var optionsSequences = [];
             structure.cycles.forEach(cycle => {
-
                 optionsCycles.push(cycle.id);
             });
-            structure.sequences.forEach(sequence => {
+            // structure.sequences.forEach(sequence => {
 
-                optionsSequences.push(sequence.id);
-            });
+            //     optionsSequences.push(sequence.id);
+            // });
 
             CreateElements("cycles", optionsCycles);
-            CreateElements("sequences", optionsSequences);
+            // CreateElements("sequences", optionsSequences);
         }
 
+        function createSchedule(isDelete) {
+            scheduleSynchronizeDTO = {};
+            scheduleSynchronizeDTO.id = (isDelete ? 'deleted_' : '') + document.getElementById('scheduleId').value;
+            scheduleSynchronizeDTO.cycleId = document.getElementById('scheduleCycleId').value;
+            scheduleSynchronizeDTO.name = document.getElementById('scheduleName').value;
+            scheduleSynchronizeDTO.description = document.getElementById('scheduleDescription').value;
+            scheduleSynchronizeDTO.cron = { pattern: document.getElementById('schedulePattern').value, date: document.getElementById('scheduleDate').value };
+            return scheduleSynchronizeDTO;
+        }
+
+        function saveSchedule() {
+            let schedule = createSchedule();
+            socket.emit('agg/sycnhronize/schedule', schedule, (response) => {
+                config.value = response.config;
+            });
+        }
+
+        function deleteSchedule() {
+            let schedule = createSchedule(true);
+            socket.emit('agg/sycnhronize/schedule', schedule, (response) => {
+                config.value = response.config;
+            });
+        }
+
+        function createSequence() {
+            irrigationSecteur1 = {}
+            irrigationSecteur1.id = document.getElementById('SequenceId').value;
+            irrigationSecteur1.name = document.getElementById('SequenceName').value;
+            irrigationSecteur1.description = document.getElementById('SequenceDescription').value;
+            irrigationSecteur1.duration = document.getElementById('SequenceDuration').value;
+            irrigationSecteur1.modules = document.getElementById('SequenceModules').value; //split
+
+            const cycleSynchronizeDTO= {}
+            cycleSynchronizeDTO.id = document.getElementById('CycleId').value;
+            cycleSynchronizeDTO.name = document.getElementById('CycleName').value;
+            cycleSynchronizeDTO.description = document.getElementById('CycleDescription').value;
+            cycleSynchronizeDTO.style = { 
+                bgColor: document.getElementById('bgColor').value, 
+                fontColor: document.getElementById('fontColor').value, 
+                iconColor: document.getElementById('iconColor').value };
+            cycleSynchronizeDTO.maxDuration = document.getElementById('maxDuration').value;;
+            cycleSynchronizeDTO.sequences = [irrigationSecteur1];
+        }
+
+        function saveCycle() {
+
+        }
+
+        function deleteCycle() {
+
+        }
+
+        function dosomthing(){
+            alert(123);
+        }
 
 
     </script>
@@ -113,24 +174,94 @@
             <button style="align-items:'center'" onclick="getConfiguration()">load</button>
         </div>
     </div>
-
-    <div>
-        <select id="sequences">
-            <option>Sequences</option>
-        </select>
-        <input id='sequencesDuration' type="text" placeholder="duration ms">
-        <button onclick="execute('sequences')">execute</button>
-    </div>
-
     <div>
         <select id="cycles">
             <option>cycles</option>
         </select>
         <input id='cyclesDuration' type="text" placeholder="duration ms">
-        <button onclick="execute('cycles')">execute</button>
+        <button onclick="execute('cycles','ON')">ON</button>
+        <button onclick="execute('cycles','OFF')">OFF</button>
+    </div>
+    <br>
+    <br>
+    <div>
+        <table>
+            <th> cycles</th>
+            <tr>
+                <th scope="row"><input id='CycleId' type="text" placeholder="id"></th>
+            </tr>
+            
+            <tr>
+                <th scope="row"><input id='CycleName' type="text" placeholder="name"></th>
+            </tr>
+            <tr>
+                <th scope="row"><input id='CycleDescription' type="text" placeholder="description"></th>
+            </tr>
+            <tr>
+                <th scope="row"><input id='bgColor' type="text" placeholder="bgColor"></th>
+                <th scope="row"><input id='fontColor' type="text" placeholder="fontColor"></th>
+                <th scope="row"><input id='iconColor' type="text" placeholder="iconColor"></th>
+            </tr>
+            <tr>
+                <th scope="row"><input id='maxDuration' type="text" placeholder="maxDuration"></th>
+            </tr>
+        </table>
+       
     </div>
 
+    <div>
+        <table>
+            <th> sequences</th>
+            <tr>
+                <th scope="row"><input id='SequenceId' type="text" placeholder="id"></th>
+            </tr>
+            
+            <tr>
+                <th scope="row"><input id='SequenceName' type="text" placeholder="name"></th>
+            </tr>
+            <tr>
+                <th scope="row"><input id='SequenceDescription' type="text" placeholder="description"></th>
+            </tr>
+            <tr>
+                <th scope="row"><input id='SequenceDuration' type="text" placeholder="maxDuration"></th>
+            </tr>
+            <tr>
+                <th scope="row"><input id='SequenceModules' type="text" placeholder="modules"></th>
+            </tr>
+        </table>
+        <button onclick="saveSchedule()">save</button>
+        <button onclick="deleteSchedule()">delete</button>
+    </div>
 
+    <div>
+        <table>
+            <th> Schedule </th>
+            <tr>
+                <th scope="row"><input id='scheduleId' type="text" placeholder="id"></th>
+            </tr>
+            <tr>
+                <th scope="row"><input id='scheduleCycleId' type="text" placeholder="parent cycle"></th>
+            </tr>
+            <tr>
+                <th scope="row"><input id='scheduleName' type="text" placeholder="name"></th>
+            </tr>
+            <tr>
+                <th scope="row"><input id='scheduleDescription' type="text" placeholder="description"></th>
+            </tr>
+            <tr>
+                <th scope="row"><input id='schedulePattern' type="text" placeholder="pattern"></th>
+                <th scope="row"><input id='scheduleDate' type="text" placeholder="date"></th>
+            </tr>
+        </table>
+        <button onclick="saveSchedule()">save</button>
+        <button onclick="deleteSchedule()">delete</button>
+    </div>
+
+    <ul> 
+        <li> 
+           <a onclick="dosomthing()">click here </a> 
+        </li> 
+      </ul> 
 
 </body>
 

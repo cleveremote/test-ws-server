@@ -27,29 +27,31 @@ io.on('connection', function (socket) {
   }
 
 
+  if (clients[0]) {
+    const my_socket = io.sockets.sockets.get(clients[0]?.socketId);
+    my_socket.emit('box/fetch/configuration', 'test', (response) => {
 
-  socket.on('execute', async (arg1, callback) => {
-    const dto = {
-      id: arg1.id,
-      status: 'STOPPED',
-      action: 'ON',
-      function: 'FUNCTION',
-      mode: 'FORCE',
-      type: 'NOW',
-      duration: Number(arg1.duration)
-    }
+      socket.emit('UPDATE_CONFIGURATION', response, (re) => {
+        console.log('test on connection ', re);
+      });
+    });
+  }
 
-    console.log(dto);
+
+  socket.on('agg/execution/process', async (arg1, callback) => {
+
+
+    console.log(arg1);
 
     const readFilePromise = () => {
       return new Promise((resolve, reject) => {
         const my_socket = io.sockets.sockets.get(clients[0].socketId);
-        my_socket.emit('execution/task', dto, (response) => {
+        my_socket.emit('box/execution/process', arg1, (response) => {
           resolve(response)
         });
       })
     }
-    
+
     const t = await readFilePromise();
     callback({ config: t });
   });
@@ -60,19 +62,22 @@ io.on('connection', function (socket) {
 
 
 
+  socket.on('agg/synchronize/status', async (response, callback) => {
+    console.log('status', response);
+    socket.broadcast.emit('front/synchronize/status', response);
+    callback({ ack: 'ok' });
+  });
 
-  socket.on('getConfiguration', async (configuration, callback) => {
+
+  socket.on('agg/fetch/configuration', async (configuration, callback) => {
     const dto = {
       configuration: configuration.data
     }
-
     const my_socket = io.sockets.sockets.get(clients[0].socketId);
-
-
     const readFilePromise = () => {
       return new Promise((resolve, reject) => {
 
-        my_socket.emit('fetch/configuration', 'test', (response) => {
+        my_socket.emit('box/fetch/configuration', 'test', (response) => {
           resolve(response)
         });
       })
@@ -89,13 +94,60 @@ io.on('connection', function (socket) {
 
   });
 
-  socket.on('synchronize', (configuration, callback) => {
+  socket.on('agg/synchronize/configuration', (configuration, callback) => {
     const dto = {
       configuration: configuration.data
     }
 
     const my_socket = io.sockets.sockets.get(clients[0].socketId);
-    my_socket.emit('synchronize/configuration', dto, (response) => {
+    my_socket.emit('box/synchronize/configuration', dto, (response) => {
+      console.log('yoyo', response);
+      socket.broadcast.emit('UPDATE_CONFIGURATION', JSON.stringify(response), (re) => {
+        console.log('test', re);
+      });
+    });
+
+
+
+  });
+
+
+
+  // socket.on('agg/synchronize/configuration-partial', (data, callback) => {
+
+  //   console.log('test data from sync front', data.sequences);
+
+
+  //   const my_socket = io.sockets.sockets.get(clients[0].socketId);
+  //   my_socket.emit('box/synchronize/configuration-partial', data, (response) => {
+  //     console.log('yoyo', response);
+  //     const struc = { cycle: response , update:true }
+  //     callback({ config: struc });
+  //     io.emit('UPDATE_CONFIGURATION', JSON.stringify(struc), (re) => {
+  //       console.log('test', re);
+  //     });
+
+
+
+  //   });
+
+  // });
+
+  socket.on('agg/synchronize/configuration-partial', (data, callback) => {
+    const my_socket = io.sockets.sockets.get(clients[0].socketId);
+    my_socket.emit('box/synchronize/configuration-partial', data, (response) => {
+      const struc = { cycle: response, update: true }
+      socket.broadcast.emit('UPDATE_CONFIGURATION', JSON.stringify(struc));
+      callback({ config: JSON.stringify(struc) });
+    });
+
+  });
+
+  socket.on('agg/sycnhronize/schedule', (configuration, callback) => {
+
+    console.log(configuration);
+    const my_socket = io.sockets.sockets.get(clients[0].socketId);
+    socket.broadcast.emit('box/synchronize/schedule', configuration, (response) => {
       console.log('yoyo', response);
     });
 
